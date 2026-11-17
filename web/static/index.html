@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>City of Dallas — Urban Heat Resilience & Climate Decision Support</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              900: '#1e3a8a',
+            },
+            heat: {
+              hot: '#ef4444',
+              warning: '#f97316',
+              cool: '#06b6d4',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    #map { height: 500px; border-radius: 0.75rem; z-index: 10; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Navigation Header -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/20">
+        <i class="fa-solid fa-temperature-arrow-up text-white text-xl"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-lg text-white flex items-center gap-2">
+          City of Dallas
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-medium">Urban Heat Resilience</span>
+        </h1>
+        <p class="text-xs text-slate-400">Challenge 1: Walkability, Heat Disparity & Cooling Siting Assistant</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-3">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        BigQuery ML Active
+      </span>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/30">
+        <i class="fa-solid fa-sparkles"></i>
+        Gemini 2.5 Flash
+      </span>
+      <button onclick="toggleChat()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition shadow-lg shadow-blue-500/25">
+        <i class="fa-solid fa-comments"></i>
+        Ask Dana (AI Analyst)
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Dashboard -->
+  <main class="flex-1 p-6 space-y-6 max-w-7xl mx-auto w-full">
+
+    <!-- KPI Summary Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <!-- KPI 1 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Intra-City Heat Spread</div>
+        <div class="text-3xl font-extrabold text-amber-400">9.2°F</div>
+        <p class="text-xs text-slate-400 mt-1">Observed street-level temperature delta</p>
+        <div class="absolute -right-2 -bottom-2 text-slate-800/40 text-6xl">
+          <i class="fa-solid fa-temperature-high"></i>
+        </div>
+      </div>
+      <!-- KPI 2 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Target Poverty Targeting</div>
+        <div class="text-3xl font-extrabold text-rose-400">3.0x <span class="text-sm font-normal text-slate-400">(36.6%)</span></div>
+        <p class="text-xs text-slate-400 mt-1">vs 12.2% Dallas citywide average</p>
+        <div class="absolute -right-2 -bottom-2 text-slate-800/40 text-6xl">
+          <i class="fa-solid fa-hand-holding-dollar"></i>
+        </div>
+      </div>
+      <!-- KPI 3 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Zero-Vehicle Transit Burden</div>
+        <div class="text-3xl font-extrabold text-cyan-400">6.5x <span class="text-sm font-normal text-slate-400">(34.4%)</span></div>
+        <p class="text-xs text-slate-400 mt-1">vs 5.3% Dallas citywide average</p>
+        <div class="absolute -right-2 -bottom-2 text-slate-800/40 text-6xl">
+          <i class="fa-solid fa-car-tunnel"></i>
+        </div>
+      </div>
+      <!-- KPI 4 -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+        <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Population Protected</div>
+        <div class="text-3xl font-extrabold text-emerald-400">20,864</div>
+        <p class="text-xs text-slate-400 mt-1">Across 5 high-priority frontline tracts</p>
+        <div class="absolute -right-2 -bottom-2 text-slate-800/40 text-6xl">
+          <i class="fa-solid fa-users"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map & Siting Matrix -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Interactive Map (2 Columns) -->
+      <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="font-bold text-base text-white flex items-center gap-2">
+              <i class="fa-solid fa-map-location-dot text-blue-400"></i>
+              Dallas Siting & Heat Vulnerability Map
+            </h2>
+            <p class="text-xs text-slate-400">4 Permanent Cooling Centers + 1 Mobile Hydration Unit</p>
+          </div>
+          <div class="flex items-center gap-3 text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500"></span> Cooling Center</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span> Mobile Hydration</span>
+          </div>
+        </div>
+        <div id="map" class="flex-1 min-h-[460px]"></div>
+      </div>
+
+      <!-- Siting Ranking Cards (1 Column) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-bold text-base text-white flex items-center gap-2">
+            <i class="fa-solid fa-list-ol text-amber-400"></i>
+            Recommended Sites
+          </h2>
+          <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md">Top 5</span>
+        </div>
+        <div id="sites-list" class="space-y-3 overflow-y-auto max-h-[480px] custom-scroll pr-1">
+          <!-- Dynamic Site Cards -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Equity Audit & 7-Year History -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- Civil Rights Equity Audit -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="font-bold text-base text-white flex items-center gap-2">
+              <i class="fa-solid fa-scale-balanced text-cyan-400"></i>
+              Civil Rights & Equity Audit
+            </h2>
+            <p class="text-xs text-slate-400">Target Cohort vs. Dallas Citywide Average</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
+            Status: Passed
+          </span>
+        </div>
+        <div class="space-y-4">
+          <!-- Poverty Comparison -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Poverty Rate</span>
+              <span class="font-bold text-rose-400">36.6% (Target) vs 12.2% (Dallas Avg)</span>
+            </div>
+            <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+              <div class="bg-slate-600 h-full" style="width: 12.2%"></div>
+              <div class="bg-rose-500 h-full" style="width: 24.4%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>0%</span>
+              <span>Target cohort has 3.0x higher poverty concentration</span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          <!-- Zero Vehicle Comparison -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Zero-Vehicle Households (Transit Dependent)</span>
+              <span class="font-bold text-cyan-400">34.4% (Target) vs 5.3% (Dallas Avg)</span>
+            </div>
+            <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden flex">
+              <div class="bg-slate-600 h-full" style="width: 5.3%"></div>
+              <div class="bg-cyan-500 h-full" style="width: 29.1%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>0%</span>
+              <span>Target cohort has 6.5x higher vehicle-dependency risk</span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          <!-- Median Age -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Median Population Age</span>
+              <span class="font-bold text-purple-400">31.8 yrs (Target) vs 36.2 yrs (Dallas Avg)</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-2 bg-slate-800/60 p-3 rounded-lg border border-slate-700/50">
+              <i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>
+              <strong>Audit Verified:</strong> Model excludes race/ethnicity to prevent proxy bias. Post-hoc verification confirms investments directly protect 20,864 residents in neighborhoods with highest structural transit barriers.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7-Year Station Exposure Chart -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <h2 class="font-bold text-base text-white flex items-center gap-2">
+              <i class="fa-solid fa-chart-line text-amber-400"></i>
+              Dallas Extreme Heat Frequency (2019–2025)
+            </h2>
+            <p class="text-xs text-slate-400">27,187 Weather Station Observations</p>
+          </div>
+          <span class="text-xs bg-slate-800 text-amber-400 px-2 py-1 rounded">Avg 38 Days > 100°F</span>
+        </div>
+        <div class="flex-1 min-h-[220px]">
+          <canvas id="frequencyChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- AI Planner Copilot Drawer (Modal / Sidebar) -->
+  <div id="chat-drawer" class="fixed inset-y-0 right-0 w-full sm:w-[480px] bg-slate-900 border-l border-slate-800 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
+    <!-- Drawer Header -->
+    <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-sm text-white">Dana — Senior Climate Planner</h3>
+          <p class="text-[11px] text-slate-400">Office of Emergency Management & Environmental Quality</p>
+        </div>
+      </div>
+      <button onclick="toggleChat()" class="text-slate-400 hover:text-white p-2">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+
+    <!-- Quick Question Chips -->
+    <div class="p-3 bg-slate-900 border-b border-slate-800 overflow-x-auto whitespace-nowrap space-x-2 custom-scroll">
+      <button onclick="sendQuickPrompt('Where should the 4 cooling centers and 1 mobile unit go?')" class="text-xs px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-full border border-slate-700">
+        📍 Siting recommendations
+      </button>
+      <button onclick="sendQuickPrompt('Run an equity audit on our top sites compared to citywide Dallas')" class="text-xs px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-full border border-slate-700">
+        ⚖️ Equity audit
+      </button>
+      <button onclick="sendQuickPrompt('Why is Tract 48113020500 hotter than average?')" class="text-xs px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-full border border-slate-700">
+        🔍 Explain Tract 48113020500
+      </button>
+    </div>
+
+    <!-- Messages Container -->
+    <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4 custom-scroll text-sm">
+      <!-- Welcome message -->
+      <div class="flex items-start space-x-3">
+        <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs flex-shrink-0 mt-0.5">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div class="bg-slate-800 p-3.5 rounded-2xl rounded-tl-sm text-slate-200 border border-slate-700 max-w-[85%] leading-relaxed">
+          Hello! I'm Dana, Senior Climate Resilience Analyst for Dallas. I have analyzed 19,491 street-level heat readings and 7 years of station history with BigQuery ML. How can I assist with your City Council siting proposals?
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Input Bar -->
+    <div class="p-4 border-t border-slate-800 bg-slate-950">
+      <form id="chat-form" onsubmit="handleChatSubmit(event)" class="flex gap-2">
+        <input id="chat-input" type="text" placeholder="Ask about heat offsets, tracts, or council briefs..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Siting Data
+    const sites = [
+      {
+        rank: 1,
+        tract: "48113020500",
+        type: "Permanent Center #1",
+        lat: 32.7834,
+        lon: -96.8623,
+        pop: 6420,
+        offset: "+0.05°F",
+        poverty: "29.1%",
+        noVehicle: "45.2%",
+        score: 12.02,
+        driver: "Latitude (+0.13°F), Housing Units (-0.11°F)",
+        color: "#3b82f6"
+      },
+      {
+        rank: 2,
+        tract: "48113008704",
+        type: "Permanent Center #2",
+        lat: 32.6952,
+        lon: -96.7815,
+        pop: 4500,
+        offset: "-0.56°F",
+        poverty: "52.2%",
+        noVehicle: "33.5%",
+        score: 11.08,
+        driver: "High Poverty (52.2%), Low Vehicle Access",
+        color: "#3b82f6"
+      },
+      {
+        rank: 3,
+        tract: "48113020300",
+        type: "Permanent Center #3",
+        lat: 32.7743,
+        lon: -96.7668,
+        pop: 2258,
+        offset: "+0.09°F",
+        poverty: "30.1%",
+        noVehicle: "38.5%",
+        score: 10.85,
+        driver: "Latitude (+0.08°F), Housing Units (+0.06°F)",
+        color: "#3b82f6"
+      },
+      {
+        rank: 4,
+        tract: "48113019213",
+        type: "Permanent Center #4",
+        lat: 32.9365,
+        lon: -96.7547,
+        pop: 3599,
+        offset: "+0.96°F",
+        poverty: "36.1%",
+        noVehicle: "28.5%",
+        score: 10.75,
+        driver: "Latitude (+1.06°F), High Heat Island Offset",
+        color: "#3b82f6"
+      },
+      {
+        rank: 5,
+        tract: "48085031720",
+        type: "Mobile Hydration Unit",
+        lat: 32.9890,
+        lon: -96.7727,
+        pop: 4087,
+        offset: "+1.24°F",
+        poverty: "35.3%",
+        noVehicle: "26.2%",
+        score: 10.63,
+        driver: "Latitude (+1.37°F), Peak Offset (+1.24°F)",
+        color: "#f59e0b"
+      }
+    ];
+
+    // Initialize Map
+    const map = L.map('map').setView([32.8200, -96.8000], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(map);
+
+    // Markers and Heat Circles
+    sites.forEach(s => {
+      const isMobile = s.rank === 5;
+      const marker = L.circleMarker([s.lat, s.lon], {
+        radius: isMobile ? 11 : 9,
+        fillColor: s.color,
+        color: '#ffffff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.9
+      }).addTo(map);
+
+      // Heat buffer circle
+      L.circle([s.lat, s.lon], {
+        radius: 1200,
+        color: isMobile ? '#f59e0b' : '#3b82f6',
+        fillColor: isMobile ? '#f59e0b' : '#3b82f6',
+        fillOpacity: 0.15,
+        weight: 1
+      }).addTo(map);
+
+      const popupContent = `
+        <div style="font-family: inherit; color: #0f172a; min-width: 200px;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px; color: ${s.color};">
+            ${s.type}
+          </div>
+          <div style="font-size: 12px; margin-bottom: 6px;"><strong>Census Tract:</strong> ${s.tract}</div>
+          <div style="font-size: 11px; line-height: 1.4;">
+            <div><strong>Predicted Offset:</strong> ${s.offset}</div>
+            <div><strong>Zero-Vehicle Rate:</strong> ${s.noVehicle}</div>
+            <div><strong>Poverty Rate:</strong> ${s.poverty}</div>
+            <div><strong>Population:</strong> ${s.pop.toLocaleString()}</div>
+            <div style="margin-top: 4px; color: #475569;"><em>Drivers: ${s.driver}</em></div>
+          </div>
+        </div>
+      `;
+      marker.bindPopup(popupContent);
+    });
+
+    // Populate Sites List
+    const sitesListEl = document.getElementById('sites-list');
+    sites.forEach(s => {
+      const card = document.createElement('div');
+      card.className = "bg-slate-800/80 hover:bg-slate-800 p-3.5 rounded-xl border border-slate-700/60 transition cursor-pointer";
+      card.onclick = () => {
+        map.flyTo([s.lat, s.lon], 13);
+      };
+      card.innerHTML = `
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs font-bold ${s.rank === 5 ? 'text-amber-400' : 'text-blue-400'} flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full ${s.rank === 5 ? 'bg-amber-400' : 'bg-blue-400'}"></span>
+            ${s.type}
+          </span>
+          <span class="text-[11px] bg-slate-900 px-2 py-0.5 rounded text-slate-300">Tract ${s.tract}</span>
+        </div>
+        <div class="grid grid-cols-3 gap-1 text-[11px] text-slate-300 mt-2 bg-slate-900/60 p-2 rounded-lg">
+          <div><span class="text-slate-500">Offset:</span> <strong class="text-white">${s.offset}</strong></div>
+          <div><span class="text-slate-500">No Car:</span> <strong class="text-cyan-400">${s.noVehicle}</strong></div>
+          <div><span class="text-slate-500">Poverty:</span> <strong class="text-rose-400">${s.poverty}</strong></div>
+        </div>
+        <div class="text-[10px] text-slate-400 mt-2 truncate">
+          <i class="fa-solid fa-microchip text-slate-500 mr-1"></i> ${s.driver}
+        </div>
+      `;
+      sitesListEl.appendChild(card);
+    });
+
+    // 7-Year History Chart
+    const ctx = document.getElementById('frequencyChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['2019', '2020', '2021', '2022', '2023', '2024', '2025'],
+        datasets: [
+          {
+            label: 'Days > 95°F',
+            data: [82, 94, 76, 122, 118, 88, 74],
+            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+            borderColor: '#3b82f6',
+            borderWidth: 1
+          },
+          {
+            label: 'Days > 100°F (Extreme Hazard)',
+            data: [34, 39, 21, 65, 65, 27, 15],
+            backgroundColor: 'rgba(239, 68, 68, 0.7)',
+            borderColor: '#ef4444',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#94a3b8', font: { size: 11 } } }
+        },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+          y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+        }
+      }
+    });
+
+    // Chat Drawer Toggle
+    function toggleChat() {
+      const drawer = document.getElementById('chat-drawer');
+      drawer.classList.toggle('translate-x-full');
+    }
+
+    // Handle Chat
+    function sendQuickPrompt(promptText) {
+      document.getElementById('chat-input').value = promptText;
+      handleChatSubmit(new Event('submit'));
+    }
+
+    async function handleChatSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      const messagesContainer = document.getElementById('chat-messages');
+      // User message
+      const userBubble = document.createElement('div');
+      userBubble.className = "flex justify-end";
+      userBubble.innerHTML = `
+        <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-sm max-w-[85%] leading-relaxed shadow">
+          ${text}
+        </div>
+      `;
+      messagesContainer.appendChild(userBubble);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      // Loading bubble
+      const loadingBubble = document.createElement('div');
+      loadingBubble.className = "flex items-start space-x-3";
+      loadingBubble.innerHTML = `
+        <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs flex-shrink-0 mt-0.5">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div class="bg-slate-800 p-3 rounded-2xl rounded-tl-sm text-slate-400 border border-slate-700">
+          <i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Dana is analyzing Dallas climate data...
+        </div>
+      `;
+      messagesContainer.appendChild(loadingBubble);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+        loadingBubble.remove();
+
+        const agentBubble = document.createElement('div');
+        agentBubble.className = "flex items-start space-x-3";
+        agentBubble.innerHTML = `
+          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs flex-shrink-0 mt-0.5">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <div class="bg-slate-800 p-3.5 rounded-2xl rounded-tl-sm text-slate-200 border border-slate-700 max-w-[85%] leading-relaxed whitespace-pre-wrap">
+            ${data.response || data.detail || 'Data retrieved successfully.'}
+          </div>
+        `;
+        messagesContainer.appendChild(agentBubble);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      } catch (err) {
+        loadingBubble.remove();
+        const errBubble = document.createElement('div');
+        errBubble.className = "text-xs text-rose-400 p-2 text-center";
+        errBubble.innerText = "Error connecting to backend: " + err.message;
+        messagesContainer.appendChild(errBubble);
+      }
+    }
+  </script>
+</body>
+</html>

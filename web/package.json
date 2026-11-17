@@ -1,0 +1,9 @@
+{
+  "name": "dallas-urban-heat-resilience-dashboard",
+  "version": "1.0.0",
+  "description": "City of Dallas Urban Heat Resilience & Cooling Center Allocation Tool",
+  "main": "static/index.html",
+  "scripts": {
+    "start": "python3 server.py"
+  }
+}
